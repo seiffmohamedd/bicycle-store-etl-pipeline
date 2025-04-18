@@ -37,7 +37,7 @@ The goal of this project is to:
 ### Stage 4: Data Transformation
 - Convert prices using the latest exchange rates.
 - Add delivery KPIs (late orders, delays).
-- Add `is_local` flag based on customer-store distance logic.
+- Add `locality_flag` flag based on customer-store distance logic.
 - Join with lookup tables to replace status codes.
 - Store final datasets in the **business** layer for analytics tools or dashboards.
 
