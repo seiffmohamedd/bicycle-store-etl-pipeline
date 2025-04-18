@@ -10,7 +10,6 @@ class Transformation:
     def __init__(self, table_name, engine):
         self.table_name = table_name
         self.engine = engine
-        self.create_engine()
 
     def create_engine(self):
         engine=create_engine(self.engine)
@@ -52,13 +51,39 @@ class Transformation:
             df["delivery_on_required"]=~df["track_performance_str"].str.contains("-")
 
 
-            print(df["delivery_on_required"])
+            df.to_sql(table_name, con=self.engine, if_exists='replace', index=False)
             return df
  
-    def lookup_order_status_num(self , csv_file_name , csv_file_name2):
-        df1=self.read_from_csv(csv_file_name)
-        df2=self.read_from_csv(csv_file_name2)
-        
-        # df2["order_status"]= df[""]
-        # print(new_df)
-        
+    def lookup_order_status_num(self, lookup_csv, table_name):
+        raw_lookup = self.read_from_csv("E:\\ITI 9 Months\\Python\\bicycle-store-etl-pipeline\\lookup directory\\lookup.csv")
+
+        keys = raw_lookup.columns.astype(int)
+        values = raw_lookup.iloc[0].values
+
+        status_map = dict(zip(keys, values))
+
+        orders_df = self.read_from_sql(table_name)
+
+        orders_df["order_status"] = orders_df["order_status"].map(status_map)
+        orders_df.to_sql(table_name, con=self.engine, if_exists='replace', index=False)
+        return orders_df
+
+
+    def add_locality_flag(self, orders_table, customers_csv, stores_csv):
+        orders_df = self.read_from_sql(orders_table)
+
+        customers_df = self.read_from_csv(customers_csv)
+        stores_df = self.read_from_csv(stores_csv)
+
+        merged_df = orders_df.merge(customers_df[["customer_id", "city"]], on="customer_id", how="left")
+        merged_df.rename(columns={"city": "customer_city"}, inplace=True)
+
+        merged_df = merged_df.merge(stores_df[["store_id", "city"]], on="store_id", how="left")
+        merged_df.rename(columns={"city": "store_city"}, inplace=True)
+
+        merged_df["locality_flag"] = merged_df["customer_city"].str.strip().str.lower() == merged_df["store_city"].str.strip().str.lower()
+
+        merged_df.drop(columns=["customer_city", "store_city"], inplace=True)
+
+        merged_df.to_sql(orders_table, con=self.engine, if_exists='replace', index=False)
+        return merged_df
